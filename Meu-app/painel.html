@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venda Paulo Afonso - Painel do Vendedor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <script>
+        const usuarioLogado = localStorage.getItem('usuarioLogado');
+        if (!usuarioLogado) {
+            alert("Acesso negado! Faça login para ver suas vendas.");
+            window.location.href = 'login.html';
+        }
+    </script>
+
+    <header class="main-header">
+        <h1>🛒 VENDA PAULO AFONSO</h1>
+        <p>Painel de Controle do Vendedor</p>
+        
+        <nav class="nav-menu">
+            <a href="index.html">Produtos</a>
+            <a href="anunciar.html">Anunciar Produto</a>
+            <a href="painel.html" class="ativo">Meus Pedidos</a>
+            <a href="perfil.html">Meu Perfil PIX</a>
+            <a href="cadastro.html">Criar Conta</a>
+            <a href="login.html">Entrar</a>
+            <a href="#" id="btnSair" style="color: #dc3545; font-weight: bold;">Sair</a>
+        </nav>
+    </header>
+
+    <div class="vitrine-container">
+        <h2>Gerenciamento de Vendas e Pedidos</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 20px;">Acompanhe o status dos pagamentos e os dados de contato dos clientes.</p>
+        
+        <div id="listaPedidosVendedor" style="max-width: 650px; margin: 0 auto;"></div>
+    </div>
+
+    <footer class="main-footer">
+        App criado por: Rudson Santos Rodrigues
+    </footer>
+
+    <script>
+        const dadosUsuario = JSON.parse(localStorage.getItem('usuarioLogado'));
+        const nomeVendedorAtual = dadosUsuario ? dadosUsuario.nome : '';
+
+        const listaPedidosDiv = document.getElementById('listaPedidosVendedor');
+        
+        let todosInteresses = [];
+        try {
+            todosInteresses = JSON.parse(localStorage.getItem('listaInteresses')) || [];
+        } catch (e) {
+            todosInteresses = [];
+        }
+
+        const meusPedidos = todosInteresses.filter(item => item.vendedor === nomeVendedorAtual);
+
+        if (meusPedidos.length === 0) {
+            listaPedidosDiv.innerHTML = '<p class="sem-anuncios" style="text-align: center; background: white; padding: 20px; border-radius: 8px;">Nenhum cliente demonstrou interesse nos seus produtos ainda.</p>';
+        } else {
+            listaPedidosDiv.innerHTML = '';
+            meusPedidos.forEach(pedido => {
+                const cardPedido = document.createElement('div');
+                cardPedido.style.background = 'white';
+                cardPedido.style.padding = '20px';
+                cardPedido.style.marginBottom = '15px';
+                cardPedido.style.borderRadius = '8px';
+                cardPedido.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+
+                const numeroLimpo = pedido.whatsappCliente ? pedido.whatsappCliente.replace(/\D/g, '') : '';
+                const formaPgto = pedido.formaPagamento || 'Não informada';
+                const status = pedido.status || 'Aguardando';
+
+                // Define cor do status visualmente
+                let corStatus = '#ffc107'; // Amarelo/Laranja para Aguardando
+                let textoStatus = '⏳ Aguardando Pagamento';
+                
+                if (status === 'Pago') {
+                    corStatus = '#28a745'; // Verde
+                    textoStatus = '✅ Pago com Sucesso';
+                } else if (status === 'Cancelado') {
+                    corStatus = '#dc3545'; // Vermelho
+                    textoStatus = '❌ Cancelado (Expirado)';
+                }
+
+                cardPedido.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 10px;">
+                        <h3 style="color: #333; margin: 0;">📦 ${pedido.produto}</h3>
+                        <span style="background: ${corStatus}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;">${textoStatus}</span>
+                    </div>
+                    <p style="margin: 5px 0; color: #555;"><strong>Valor:</strong> R$ ${parseFloat(pedido.preco).toFixed(2)}</p>
+                    <p style="margin: 5px 0; color: #555;"><strong>Comprador(a):</strong> ${pedido.nomeCliente}</p>
+                    <p style="margin: 5px 0; color: #555;"><strong>Forma de Pagamento:</strong> <span style="color: #007bff; font-weight: bold;">${formaPgto}</span></p>
+                    <p style="margin: 5px 0; color: #555;"><strong>WhatsApp:</strong> <a href="https://wa.me/55${numeroLimpo}?text=Olá%20${encodeURIComponent(pedido.nomeCliente)},%20vi%20seu%20pedido%20do%20produto%20${encodeURIComponent(pedido.produto)}!" target="_blank" style="color: #25d366; font-weight: bold; text-decoration: none;">${pedido.whatsappCliente} 💬 (Chamar no WhatsApp)</a></p>
+                    <p style="margin-top: 10px; font-size: 12px; color: #888;">Data do pedido: ${pedido.data}</p>
+                `;
+
+                listaPedidosDiv.appendChild(cardPedido);
+            });
+        }
+
+        const btnSair = document.getElementById('btnSair');
+        if (btnSair) {
+            btnSair.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm("Você tem certeza que deseja sair da sua conta?")) {
+                    localStorage.removeItem('usuarioLogado');
+                    alert("Você saiu com sucesso!");
+                    window.location.href = 'index.html';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
