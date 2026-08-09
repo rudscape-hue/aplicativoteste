@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venda Paulo Afonso - Produtos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="main-header">
+        <h1>🛒 VENDA PAULO AFONSO</h1>
+        <p>A vitrine de classificados da nossa cidade</p>
+        
+        <nav class="nav-menu">
+            <a href="index.html" class="ativo">Produtos</a>
+            <a href="anunciar.html">Anunciar Produto</a>
+            <a href="painel.html">Meus Pedidos</a>
+            <a href="perfil.html">Meu Perfil PIX</a>
+            <a href="cadastro.html">Criar Conta</a>
+            <a href="login.html">Entrar</a>
+            <a href="#" id="btnSair" style="color: #dc3545; font-weight: bold;">Sair</a>
+        </nav>
+    </header>
+
+    <div class="vitrine-container">
+        <h2>Produtos em Destaque</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 20px;">Clique em "Comprar Produto" para escolher a forma de pagamento e fechar negócio!</p>
+        
+        <div id="listaProdutos" class="grid-produtos"></div>
+    </div>
+
+    <footer class="main-footer">
+        App criado por: Rudson Santos Rodrigues
+    </footer>
+
+    <script>
+        const listaProdutosDiv = document.getElementById('listaProdutos');
+
+        let anuncios = [];
+        try {
+            anuncios = JSON.parse(localStorage.getItem('listaAnuncios')) || [];
+        } catch (erro) {
+            anuncios = [];
+            localStorage.removeItem('listaAnuncios');
+        }
+
+        if (anuncios.length === 0) {
+            listaProdutosDiv.innerHTML = '<p class="sem-anuncios">Ainda não há produtos anunciados. Seja o primeiro a anunciar!</p>';
+        } else {
+            anuncios.forEach((anuncio) => {
+                const card = document.createElement('div');
+                card.classList.add('produto-card');
+
+                const titulo = anuncio.titulo || 'Produto sem título';
+                const preco = anuncio.preco ? parseFloat(anuncio.preco).toFixed(2) : '0.00';
+                const descricao = anuncio.descricao || 'Sem descrição';
+                const anunciante = anuncio.anunciante || 'Anônimo';
+                const imagem = anuncio.imagem || '';
+
+                card.innerHTML = `
+                    <img src="${imagem}" alt="${titulo}">
+                    <div class="produto-info">
+                        <h3>${titulo}</h3>
+                        <p class="preco">R$ ${preco}</p>
+                        <p class="descricao">${descricao}</p>
+                        <span class="anunciante">Vendedor: ${anunciante}</span>
+                        
+                        <div class="acoes-produto" style="margin-top: 15px;">
+                            <button class="btn-comprar btn-principal" 
+                                data-titulo="${titulo.replace(/"/g, '&quot;')}" 
+                                data-preco="${preco}" 
+                                data-vendedor="${anunciante.replace(/"/g, '&quot;')}"
+                                style="width: 100%; padding: 10px; font-size: 14px; cursor: pointer;">
+                                🛒 Comprar Produto
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                listaProdutosDiv.appendChild(card);
+            });
+
+            document.querySelectorAll('.btn-comprar').forEach(botao => {
+                botao.addEventListener('click', function() {
+                    const titulo = this.getAttribute('data-titulo');
+                    const preco = this.getAttribute('data-preco');
+                    const vendedor = this.getAttribute('data-vendedor');
+                    irParaPagamento(titulo, preco, vendedor);
+                });
+            });
+        }
+
+        function irParaPagamento(titulo, preco, vendedor) {
+            let usuarioLogado = null;
+            try {
+                usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));
+            } catch (e) {
+                usuarioLogado = null;
+            }
+
+            if (!usuarioLogado) {
+                alert("Você precisa estar logado para comprar um produto!");
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const produtoSelecionado = {
+                titulo: titulo,
+                preco: preco,
+                vendedor: vendedor
+            };
+
+            localStorage.setItem('produtoCheckout', JSON.stringify(produtoSelecionado));
+            window.location.href = 'pagamento.html';
+        }
+
+        const btnSair = document.getElementById('btnSair');
+        if (btnSair) {
+            btnSair.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm("Você tem certeza que deseja sair da sua conta?")) {
+                    localStorage.removeItem('usuarioLogado');
+                    alert("Você saiu com sucesso!");
+                    location.reload();
+                }
+            });
+        }
+    </script>
+</body>
+</html>

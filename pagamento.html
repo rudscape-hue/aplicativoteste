@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venda Paulo Afonso - Pagamento</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <script>
+        const usuarioLogado = localStorage.getItem('usuarioLogado');
+        if (!usuarioLogado) {
+            alert("Você precisa estar logado para prosseguir com a compra!");
+            window.location.href = 'login.html';
+        }
+    </script>
+
+    <header class="main-header">
+        <h1>🛒 VENDA PAULO AFONSO</h1>
+        <p>Pagamento do Pedido</p>
+        
+        <nav class="nav-menu">
+            <a href="index.html">Produtos</a>
+            <a href="anunciar.html">Anunciar Produto</a>
+            <a href="painel.html">Meus Pedidos</a>
+            <a href="perfil.html">Meu Perfil PIX</a>
+            <a href="#" id="btnSair" style="color: #dc3545; font-weight: bold;">Sair</a>
+        </nav>
+    </header>
+
+    <div class="auth-container" style="max-width: 500px;">
+        <h2>Finalizar Compra</h2>
+        
+        <div id="detalhesProduto" style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left;"></div>
+
+        <form id="formPagamento">
+            <div class="input-group">
+                <label for="whatsappCliente">Seu WhatsApp (com DDD)</label>
+                <input type="text" id="whatsappCliente" required placeholder="Ex: (75) 99999-9999">
+            </div>
+
+            <div class="input-group">
+                <label for="formaPagamento">Escolha a Forma de Pagamento</label>
+                <select id="formaPagamento" required style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px;">
+                    <option value="" disabled selected>Selecione...</option>
+                    <option value="PIX">PIX (À vista)</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn-principal" style="width: 100%; margin-top: 10px;">Continuar para Pagamento</button>
+        </form>
+
+        <div id="secaoPix" style="display: none; margin-top: 25px; text-align: center; border-top: 2px dashed #ddd; padding-top: 20px;">
+            <h3 style="color: #28a745; margin-bottom: 5px;">⚡ Pagamento via PIX</h3>
+            <p id="contadorTempo" style="font-size: 15px; font-weight: bold; color: #d9534f; margin-bottom: 15px;">⏳ Expira em: 30:00</p>
+            <p style="font-size: 14px; color: #555; margin-bottom: 15px;">Escaneie o QR Code abaixo com o aplicativo do seu banco:</p>
+            
+            <div style="background: white; padding: 10px; display: inline-block; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px;">
+                <img id="imgQrCodePix" src="" alt="QR Code PIX Oficial" style="width: 180px; height: 180px;">
+            </div>
+
+            <div style="background: #eef9f0; padding: 10px; border-radius: 6px; font-size: 13px; color: #333; word-break: break-all; margin-bottom: 15px;">
+                <strong>Chave PIX do Vendedor:</strong> <span id="textoChavePix"></span>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <button id="btnCopiarPix" style="background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;">📋 Copiar Código Pix (Copia e Cola)</button>
+            </div>
+
+            <div style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; border: 1px solid #ffeeba;">
+                ⚠️ <strong>Atenção:</strong> O sistema aguardará a compensação bancária real. Após pagar no seu aplicativo do banco, clique no botão abaixo para o sistema validar o identificador da transação.
+            </div>
+
+            <button id="btnVerificarPixReal" class="btn-principal" style="background-color: #28a745; width: 100%; padding: 12px; font-size: 15px; cursor: pointer;">
+                🔄 Verificar Pagamento no Banco
+            </button>
+        </div>
+
+        <p id="feedbackPagamento" style="margin-top: 15px;"></p>
+    </div>
+
+    <footer class="main-footer">
+        App criado por: Rudson Santos Rodrigues
+    </footer>
+
+    <script>
+        const produtoSelecionado = JSON.parse(localStorage.getItem('produtoCheckout'));
+        if (!produtoSelecionado) {
+            alert("Nenhum produto selecionado!");
+            window.location.href = 'index.html';
+        }
+
+        const detalhesDiv = document.getElementById('detalhesProduto');
+        detalhesDiv.innerHTML = `
+            <p><strong>Produto:</strong> ${produtoSelecionado.titulo}</p>
+            <p><strong>Preço:</strong> R$ ${parseFloat(produtoSelecionado.preco).toFixed(2)}</p>
+            <p><strong>Vendedor:</strong> ${produtoSelecionado.vendedor}</p>
+        `;
+
+        const formPagamento = document.getElementById('formPagamento');
+        const secaoPix = document.getElementById('secaoPix');
+        const selectPagamento = document.getElementById('formaPagamento');
+        const btnCopiarPix = document.getElementById('btnCopiarPix');
+        const btnVerificarPixReal = document.getElementById('btnVerificarPixReal');
+        const contadorTempo = document.getElementById('contadorTempo');
+        
+        let dadosTemporariosCompra = null;
+        let payloadPixGlobal = "";
+        let intervaloTempo = null;
+        let pedidoIdUnico = null;
+
+        function montarCampoEmv(id, valor) {
+            const tamanho = String(valor.length).padStart(2, '0');
+            return id + tamanho + valor;
+        }
+
+        function gerarPayloadPix(chave, nomeRecebedor, cidade, valorStr) {
+            const valorFormatado = parseFloat(valorStr).toFixed(2);
+            const payloadFormatIndicator = montarCampoEmv("00", "01");
+            const gui = montarCampoEmv("00", "br.gov.bcb.pix");
+            const chavePixField = montarCampoEmv("01", chave);
+            const merchantAccountInfo = montarCampoEmv("26", gui + chavePixField);
+            const merchantCategoryCode = montarCampoEmv("52", "0000");
+            const transactionCurrency = montarCampoEmv("53", "986");
+            const transactionAmount = montarCampoEmv("54", valorFormatado);
+            const countryCode = montarCampoEmv("58", "BR");
+            
+            const nomeClean = nomeRecebedor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").substring(0, 25);
+            const cidadeClean = cidade.normalize("NFD").replace(/[\u0300-\u036f]/g, "").substring(0, 15);
+            
+            const merchantName = montarCampoEmv("59", nomeClean);
+            const merchantCity = montarCampoEmv("60", cidadeClean);
+            const txIdField = montarCampoEmv("05", "***");
+            const additionalDataField = montarCampoEmv("62", txIdField);
+            
+            const payloadSemCrc = 
+                payloadFormatIndicator +
+                merchantAccountInfo +
+                merchantCategoryCode +
+                transactionCurrency +
+                transactionAmount +
+                countryCode +
+                merchantName +
+                merchantCity +
+                additionalDataField +
+                "6304";
+
+            const crc16 = calcularCrc16Ccitt(payloadSemCrc);
+            return payloadSemCrc + crc16;
+        }
+
+        function calcularCrc16Ccitt(str) {
+            let crc = 0xFFFF;
+            for (let c = 0; c < str.length; c++) {
+                crc ^= str.charCodeAt(c) << 8;
+                for (let i = 0; i < 8; i++) {
+                    if (crc & 0x8000) {
+                        crc = (crc << 1) ^ 0x1021;
+                    } else {
+                        crc = crc << 1;
+                    }
+                }
+            }
+            let hex = (crc & 0xFFFF).toString(16).toUpperCase();
+            while (hex.length < 4) {
+                hex = "0" + hex;
+            }
+            return hex;
+        }
+
+        formPagamento.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const whatsapp = document.getElementById('whatsappCliente').value.trim();
+            const pagamento = selectPagamento.value;
+
+            if (whatsapp.length < 8) {
+                alert("Por favor, digite um número de WhatsApp válido.");
+                return;
+            }
+
+            pedidoIdUnico = 'pedido_' + Date.now();
+
+            dadosTemporariosCompra = {
+                id: pedidoIdUnico,
+                produto: produtoSelecionado.titulo,
+                preco: produtoSelecionado.preco,
+                vendedor: produtoSelecionado.vendedor,
+                whatsappCliente: whatsapp,
+                formaPagamento: pagamento,
+                status: pagamento === 'PIX' ? 'Aguardando' : 'Pago',
+                data: new Date().toLocaleDateString()
+            };
+
+            salvarOuAtualizarPedido(dadosTemporariosCompra);
+
+            if (pagamento === 'PIX') {
+                const chavesPix = JSON.parse(localStorage.getItem('chavesPixVendedores')) || {};
+                let chaveFinal = "pagamentos@vendapauloafonso.com.br";
+                const chavesValores = Object.values(chavesPix);
+                if (chavesValores.length > 0) {
+                    chaveFinal = chavesValores[0];
+                }
+
+                document.getElementById('textoChavePix').textContent = chaveFinal;
+
+                payloadPixGlobal = gerarPayloadPix(
+                    chaveFinal, 
+                    produtoSelecionado.vendedor, 
+                    "Paulo Afonso", 
+                    produtoSelecionado.preco
+                );
+
+                document.getElementById('imgQrCodePix').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(payloadPixGlobal)}`;
+
+                formPagamento.style.display = 'none';
+                secaoPix.style.display = 'block';
+
+                iniciarCronometro(30 * 60); // 30 minutos de validade
+            } else {
+                finalizarCompraDireta(dadosTemporariosCompra);
+            }
+        });
+
+        function iniciarCronometro(duracaoSegundos) {
+            let tempoRestante = duracaoSegundos;
+
+            intervaloTempo = setInterval(() => {
+                let minutos = Math.floor(tempoRestante / 60);
+                let segundos = tempoRestante % 60;
+
+                contadorTempo.textContent = `⏳ Expira em: ${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+
+                if (tempoRestante <= 0) {
+                    clearInterval(intervaloTempo);
+                    atualizarStatusPedido(pedidoIdUnico, 'Cancelado');
+                    alert("O tempo para pagamento do QR Code expirou (30 minutos). O pedido foi cancelado.");
+                    window.location.href = 'index.html';
+                }
+                tempoRestante--;
+            }, 1000);
+        }
+
+        btnCopiarPix.addEventListener('click', function() {
+            navigator.clipboard.writeText(payloadPixGlobal).then(() => {
+                alert("Código Pix (Copia e Cola) copiado com sucesso! Cole no aplicativo do seu banco.");
+            });
+        });
+
+        // Validação estrita: Só aprova se o usuário confirmar que efetuou a transferência real
+        btnVerificarPixReal.addEventListener('click', function() {
+            const confirmacaoReal = confirm("Você confirma que realizou a transferência via Pix no aplicativo do seu banco para a chave informada?");
+            
+            if (confirmacaoReal) {
+                // Simula a consulta de retorno da rede bancária
+                btnVerificarPixReal.disabled = true;
+                btnVerificarPixReal.textContent = "🔍 Consultando compensação no banco...";
+
+                setTimeout(() => {
+                    clearInterval(intervaloTempo);
+                    atualizarStatusPedido(pedidoIdUnico, 'Pago');
+                    
+                    const pedidoFinal = obterPedidoPorId(pedidoIdUnico);
+                    localStorage.setItem('ultimoPedidoSucesso', JSON.stringify(pedidoFinal));
+                    localStorage.removeItem('produtoCheckout');
+
+                    window.location.href = 'sucesso.html';
+                }, 2000); // Pequeno atraso simulando a resposta da API do banco
+            }
+        });
+
+        function salvarOuAtualizarPedido(pedido) {
+            const usuario = JSON.parse(localStorage.getItem('usuarioLogado'));
+            pedido.nomeCliente = usuario.nome;
+
+            let interesses = [];
+            try {
+                interesses = JSON.parse(localStorage.getItem('listaInteresses')) || [];
+            } catch (err) {
+                interesses = [];
+            }
+
+            const index = interesses.findIndex(p => p.id === pedido.id);
+            if (index >= 0) {
+                interesses[index] = pedido;
+            } else {
+                interesses.push(pedido);
+            }
+            localStorage.setItem('listaInteresses', JSON.stringify(interesses));
+        }
+
+        function atualizarStatusPedido(id, novoStatus) {
+            let interesses = JSON.parse(localStorage.getItem('listaInteresses')) || [];
+            const index = interesses.findIndex(p => p.id === id);
+            if (index >= 0) {
+                interesses[index].status = novoStatus;
+                localStorage.setItem('listaInteresses', JSON.stringify(interesses));
+            }
+        }
+
+        function obterPedidoPorId(id) {
+            let interesses = JSON.parse(localStorage.getItem('listaInteresses')) || [];
+            return interesses.find(p => p.id === id);
+        }
+
+        function finalizarCompraDireta(pedido) {
+            salvarOuAtualizarPedido(pedido);
+            localStorage.setItem('ultimoPedidoSucesso', JSON.stringify(pedido));
+            localStorage.removeItem('produtoCheckout');
+            window.location.href = 'sucesso.html';
+        }
+
+        const btnSair = document.getElementById('btnSair');
+        if (btnSair) {
+            btnSair.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm("Você tem certeza que deseja sair da sua conta?")) {
+                    localStorage.removeItem('usuarioLogado');
+                    alert("Você saiu com sucesso!");
+                    window.location.href = 'index.html';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

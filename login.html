@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venda Paulo Afonso - Entrar</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="main-header">
+        <h1>🛒 VENDA PAULO AFONSO</h1>
+        <p>Faça login na sua conta</p>
+        
+        <nav class="nav-menu">
+            <a href="index.html">Produtos</a>
+            <a href="cadastro.html">Criar Conta</a>
+            <a href="login.html" class="ativo">Entrar</a>
+            <a href="anunciar.html">Anunciar Produto</a>
+        </nav>
+    </header>
+
+    <div class="auth-container">
+        <h2>Entrar no Sistema</h2>
+        
+        <form id="formLogin">
+            <div class="input-group">
+                <label for="emailLogin">E-mail</label>
+                <input type="email" id="emailLogin" required placeholder="Seu e-mail cadastrado">
+            </div>
+
+            <div class="input-group">
+                <label for="senhaLogin">Senha</label>
+                <input type="password" id="senhaLogin" required placeholder="Sua senha">
+            </div>
+
+            <button type="submit" class="btn-principal">Entrar</button>
+        </form>
+
+        <p id="mensagemFeedbackLogin"></p>
+    </div>
+
+    <footer class="main-footer">
+        App criado por: Rudson Santos Rodrigues
+    </footer>
+
+    <script>
+        const formLogin = document.getElementById('formLogin');
+        const mensagemFeedbackLogin = document.getElementById('mensagemFeedbackLogin');
+
+        formLogin.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const emailDigitado = document.getElementById('emailLogin').value.trim();
+            const senhaDigitada = document.getElementById('senhaLogin').value.trim();
+
+            // Busca o usuário que foi salvo no cadastro
+            const usuarioSalvo = JSON.parse(localStorage.getItem('usuarioCadastrado'));
+
+            if (usuarioSalvo && usuarioSalvo.email === emailDigitado && usuarioSalvo.senha === senhaDigitada) {
+                // Se confere, define ele oficialmente como logado
+                localStorage.setItem('usuarioLogado', JSON.stringify(usuarioSalvo));
+
+                mensagemFeedbackLogin.style.color = 'green';
+                mensagemFeedbackLogin.textContent = 'Login realizado com sucesso! Redirecionando...';
+
+                setTimeout(() => {
+                    window.location.href = 'anunciar.html';
+                }, 1200);
+            } else {
+                mensagemFeedbackLogin.style.color = 'red';
+                mensagemFeedbackLogin.textContent = 'E-mail ou senha incorretos. Tente novamente.';
+            }
+        });
+    </script>
+</body>
+</html>

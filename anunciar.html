@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venda Paulo Afonso - Anunciar</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <script>
+        const usuarioLogado = localStorage.getItem('usuarioLogado');
+        if (!usuarioLogado) {
+            alert("Acesso negado! Você precisa fazer login ou criar uma conta primeiro.");
+            window.location.href = 'login.html';
+        }
+    </script>
+
+    <header class="main-header">
+        <h1>🛒 VENDA PAULO AFONSO</h1>
+        <p>Cadastre o seu produto</p>
+        
+        <nav class="nav-menu">
+            <a href="index.html">Produtos</a>
+            <a href="anunciar.html" class="ativo">Anunciar Produto</a>
+            <a href="painel.html">Meus Pedidos</a>
+            <a href="perfil.html">Meu Perfil PIX</a>
+            <a href="cadastro.html">Criar Conta</a>
+            <a href="login.html">Entrar</a>
+            <a href="#" id="btnSair" style="color: #dc3545; font-weight: bold;">Sair</a>
+        </nav>
+    </header>
+
+    <div class="auth-container">
+        <h2>Criar Anúncio</h2>
+        
+        <form id="formAnuncio">
+            <div class="input-group">
+                <label for="tituloProduto">Título do Produto</label>
+                <input type="text" id="tituloProduto" required placeholder="Ex: Bicicleta Aro 29">
+            </div>
+
+            <div class="input-group">
+                <label for="precoProduto">Preço (R$)</label>
+                <input type="number" id="precoProduto" step="0.01" required placeholder="Ex: 450.00">
+            </div>
+
+            <div class="input-group">
+                <label for="imagemProduto">Foto do Produto</label>
+                <input type="file" id="imagemProduto" accept="image/*" required>
+            </div>
+
+            <div class="input-group">
+                <label for="descricaoProduto">Descrição</label>
+                <input type="text" id="descricaoProduto" required placeholder="Detalhes do estado de conservação">
+            </div>
+
+            <button type="submit" class="btn-principal">Publicar Anúncio</button>
+        </form>
+
+        <p id="mensagemFeedbackAnuncio"></p>
+    </div>
+
+    <footer class="main-footer">
+        App criado por: Rudson Santos Rodrigues
+    </footer>
+
+    <script>
+        const formAnuncio = document.getElementById('formAnuncio');
+        const mensagemFeedbackAnuncio = document.getElementById('mensagemFeedbackAnuncio');
+
+        formAnuncio.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const titulo = document.getElementById('tituloProduto').value;
+            const preco = document.getElementById('precoProduto').value;
+            const descricao = document.getElementById('descricaoProduto').value;
+            const arquivoImagem = document.getElementById('imagemProduto').files[0];
+
+            const leitor = new FileReader();
+            leitor.onload = function(eventoCarregamento) {
+                const dadosUsuario = JSON.parse(localStorage.getItem('usuarioLogado'));
+
+                const anuncio = {
+                    titulo,
+                    preco,
+                    descricao,
+                    imagem: eventoCarregamento.target.result,
+                    anunciante: dadosUsuario ? dadosUsuario.nome : 'Anônimo'
+                };
+
+                let listaAnuncios = JSON.parse(localStorage.getItem('listaAnuncios')) || [];
+                listaAnuncios.push(anuncio);
+                localStorage.setItem('listaAnuncios', JSON.stringify(listaAnuncios));
+
+                mensagemFeedbackAnuncio.style.color = 'green';
+                mensagemFeedbackAnuncio.textContent = 'Anúncio publicado com sucesso!';
+                
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1000);
+            };
+
+            leitor.readAsDataURL(arquivoImagem);
+        });
+
+        const btnSair = document.getElementById('btnSair');
+        if (btnSair) {
+            btnSair.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm("Você tem certeza que deseja sair da sua conta?")) {
+                    localStorage.removeItem('usuarioLogado');
+                    alert("Você saiu com sucesso!");
+                    window.location.href = 'index.html';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
